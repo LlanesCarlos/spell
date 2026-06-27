@@ -170,8 +170,9 @@ export const handler = async (event) => {
 
   const FREE_MODELS = [
     'meta-llama/llama-3.3-70b-instruct:free',
-    'deepseek/deepseek-chat-v3-0324:free',
     'google/gemma-3-27b-it:free',
+    'qwen/qwen3-235b-a22b:free',
+    'qwen/qwen3-8b:free',
     'mistralai/mistral-7b-instruct:free',
   ]
 
@@ -194,7 +195,7 @@ export const handler = async (event) => {
         body: JSON.stringify({ model, messages, response_format: { type: 'json_object' }, temperature: 0.8 }),
       })
 
-      if (res.status === 429 || res.status === 503) {
+      if (res.status === 429 || res.status === 503 || res.status === 404) {
         lastError = new Error(`${model} rate-limited (${res.status})`)
         continue
       }

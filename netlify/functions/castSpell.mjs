@@ -17,31 +17,35 @@ function col(element, variant) {
   return PALETTES[element]?.[variant] ?? PALETTES.none.primary
 }
 
-// ─── Gemini response schema ───────────────────────────────────────────────────
-const LAYER_SCHEMA = {
-  type: 'object',
-  properties: {
-    type:              { type: 'string', enum: ['sphere','torus','box','cone','cylinder','tetra'] },
-    size:              { type: 'number' },
-    scaleX:            { type: 'number' },
-    scaleY:            { type: 'number' },
-    scaleZ:            { type: 'number' },
-    colorVariant:      { type: 'string', enum: ['primary','bright','dark','contrast'] },
-    opacity:           { type: 'number' },
-    emissiveIntensity: { type: 'number' },
-    rotX:              { type: 'number' },
-    rotY:              { type: 'number' },
-    rotZ:              { type: 'number' },
-  },
-  required: ['type','size','scaleX','scaleY','scaleZ','colorVariant','opacity','emissiveIntensity','rotX','rotY','rotZ'],
-}
-
+// ─── JSON schema for structured output ───────────────────────────────────────
 const RESPONSE_SCHEMA = {
   type: 'object',
   properties: {
     name:    { type: 'string' },
     element: { type: 'string', enum: ['none','fire','water','ice','electric','darkness','holy','poison','nature','earth','wind'] },
-    layers:  { type: 'array', items: LAYER_SCHEMA, minItems: 0, maxItems: 3 },
+    layers: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          type:              { type: 'string', enum: ['sphere','torus','box','cone','cylinder','tetra'] },
+          size:              { type: 'number' },
+          scaleX:            { type: 'number' },
+          scaleY:            { type: 'number' },
+          scaleZ:            { type: 'number' },
+          colorVariant:      { type: 'string', enum: ['primary','bright','dark','contrast'] },
+          opacity:           { type: 'number' },
+          emissiveIntensity: { type: 'number' },
+          rotX:              { type: 'number' },
+          rotY:              { type: 'number' },
+          rotZ:              { type: 'number' },
+        },
+        required: ['type','size','scaleX','scaleY','scaleZ','colorVariant','opacity','emissiveIntensity','rotX','rotY','rotZ'],
+        additionalProperties: false,
+      },
+      minItems: 0,
+      maxItems: 3,
+    },
     flightParticles: {
       type: 'object',
       properties: {
@@ -55,6 +59,7 @@ const RESPONSE_SCHEMA = {
         colorVariant: { type: 'string', enum: ['primary','bright','dark','contrast'] },
       },
       required: ['enabled','countPerSec','size','opacity','spread','speed','lifetime','colorVariant'],
+      additionalProperties: false,
     },
     targetingType:       { type: 'string', enum: ['nearest-enemy','none','self'] },
     speed:               { type: 'number' },
@@ -70,6 +75,7 @@ const RESPONSE_SCHEMA = {
     'targetingType','speed','collisionRadius','damage','healAmount',
     'impactParticleCount','impactParticleSpeed','burnsTrees',
   ],
+  additionalProperties: false,
 }
 
 // ─── Build full spell definition from LLM spec ───────────────────────────────
@@ -157,37 +163,46 @@ export const handler = async (event) => {
     return { statusCode: 400, body: JSON.stringify({ error: 'Body must be { prompt: string }' }) }
   }
 
-  const apiKey = process.env.GEMINI_API_KEY
+  const apiKey = process.env.OPENROUTER_API_KEY
   if (!apiKey) {
-    return { statusCode: 500, body: JSON.stringify({ error: 'GEMINI_API_KEY not set' }) }
+    return { statusCode: 500, body: JSON.stringify({ error: 'OPENROUTER_API_KEY not set' }) }
   }
 
   try {
-    const res = await fetch(
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent',
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-        body: JSON.stringify({
-          system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
-          contents: [{ role: 'user', parts: [{ text: `Spell description: "${prompt}"` }] }],
-          generationConfig: {
-            responseMimeType: 'application/json',
-            responseSchema: RESPONSE_SCHEMA,
-            temperature: 0.8,
+    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': 'https://spell.netlify.app',
+        'X-Title': 'Spell',
+      },
+      body: JSON.stringify({
+        model: 'openai/gpt-4o',
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'user',   content: `Spell description: "${prompt}"` },
+        ],
+        response_format: {
+          type: 'json_schema',
+          json_schema: {
+            name: 'spell',
+            strict: true,
+            schema: RESPONSE_SCHEMA,
           },
-        }),
-      }
-    )
+        },
+        temperature: 0.8,
+      }),
+    })
 
     if (!res.ok) {
       const errText = await res.text()
-      throw new Error(`Gemini API ${res.status}: ${errText}`)
+      throw new Error(`OpenRouter API ${res.status}: ${errText}`)
     }
 
     const json = await res.json()
-    const text = json.candidates?.[0]?.content?.parts?.[0]?.text
-    if (!text) throw new Error('Empty response from Gemini')
+    const text = json.choices?.[0]?.message?.content
+    if (!text) throw new Error('Empty response from OpenRouter')
 
     const spec = JSON.parse(text)
     return {

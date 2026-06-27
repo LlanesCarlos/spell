@@ -1,7 +1,6 @@
 import { GoogleGenAI, Type } from '@google/genai'
 
-// Netlify automatically injects GEMINI_API_KEY and GOOGLE_GEMINI_BASE_URL
-const genAI = new GoogleGenAI({})
+const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
 
 // ─── Element color palettes ───────────────────────────────────────────────────
 const PALETTES = {

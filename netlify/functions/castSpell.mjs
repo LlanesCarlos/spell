@@ -185,11 +185,8 @@ export const handler = async (event) => {
       body: JSON.stringify({
         models: [
           'meta-llama/llama-3.3-70b-instruct:free',
-          'google/gemma-3-27b-it:free',
           'google/gemini-2.0-flash-exp:free',
-          'google/gemini-flash-1.5-8b:free',
-          'meta-llama/llama-3.1-8b-instruct:free',
-          'microsoft/phi-3-mini-128k-instruct:free',
+          'google/gemma-3-27b-it:free',
         ],
         route: 'fallback',
         messages,

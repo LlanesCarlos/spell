@@ -32,7 +32,11 @@
       "PowerShell(Start-Process \"http://localhost:5174\")",
       "PowerShell(Get-ChildItem \"C:\\\\Program Files\\\\\" -Filter \"Git\" -ErrorAction SilentlyContinue | Select-Object FullName; [System.Environment]::GetEnvironmentVariable\\(\"PATH\",\"Machine\"\\) -split \";\" | Where-Object { $_ -match \"git\" })",
       "PowerShell($git = \"D:\\\\Program Files\\\\Git\\\\cmd\\\\git.exe\"; cd d:\\\\Proyectos\\\\spell; & $git config --global user.name \"LlanesCarlos\"; & $git config --global user.email \"cllanes.llanes@gmail.com\"; Write-Output \"configured\")",
-      "PowerShell($git = \"D:\\\\Program Files\\\\Git\\\\cmd\\\\git.exe\"; cd d:\\\\Proyectos\\\\spell; & $git init; & $git add .; & $git status --short | Select-Object -First 30)"
+      "PowerShell($git = \"D:\\\\Program Files\\\\Git\\\\cmd\\\\git.exe\"; cd d:\\\\Proyectos\\\\spell; & $git init; & $git add .; & $git status --short | Select-Object -First 30)",
+      "PowerShell($git = \"D:\\\\Program Files\\\\Git\\\\cmd\\\\git.exe\"; cd d:\\\\Proyectos\\\\spell; & $git commit -m \"Initial commit\" 2>&1 | Select-Object -Last 5)",
+      "PowerShell($git = \"D:\\\\Program Files\\\\Git\\\\cmd\\\\git.exe\"; cd d:\\\\Proyectos\\\\spell; & $git branch -M main; & $git remote add origin https://github.com/LlanesCarlos/spell.git; Write-Output \"remote added\")",
+      "PowerShell($git = \"D:\\\\Program Files\\\\Git\\\\cmd\\\\git.exe\"; cd d:\\\\Proyectos\\\\spell; & $git push -u origin main 2>&1)",
+      "PowerShell($git = \"D:\\\\Program Files\\\\Git\\\\cmd\\\\git.exe\"; $env:Path += \";D:\\\\Program Files\\\\nodejs\\\\\"; cd d:\\\\Proyectos\\\\spell; npm install 2>&1 | Select-Object -Last 3; & $git add .; & $git commit -m \"Switch to @google/genai with Netlify native Gemini integration\"; & $git push 2>&1 | Select-Object -Last 5)"
     ]
   }
 }

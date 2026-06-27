@@ -178,19 +178,12 @@ export const handler = async (event) => {
         'X-Title': 'Spell',
       },
       body: JSON.stringify({
-        model: 'openai/gpt-4o',
+        model: 'meta-llama/llama-3.3-70b-instruct:free',
         messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'system', content: SYSTEM_PROMPT + '\n\nYou MUST respond with valid JSON only. No markdown, no explanation — just the raw JSON object.' },
           { role: 'user',   content: `Spell description: "${prompt}"` },
         ],
-        response_format: {
-          type: 'json_schema',
-          json_schema: {
-            name: 'spell',
-            strict: true,
-            schema: RESPONSE_SCHEMA,
-          },
-        },
+        response_format: { type: 'json_object' },
         temperature: 0.8,
       }),
     })

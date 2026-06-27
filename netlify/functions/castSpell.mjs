@@ -168,46 +168,61 @@ export const handler = async (event) => {
     return { statusCode: 500, body: JSON.stringify({ error: 'OPENROUTER_API_KEY not set' }) }
   }
 
-  try {
-    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://spell.netlify.app',
-        'X-Title': 'Spell',
-      },
-      body: JSON.stringify({
-        model: 'meta-llama/llama-3.3-70b-instruct:free',
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPT + '\n\nYou MUST respond with valid JSON only. No markdown, no explanation — just the raw JSON object.' },
-          { role: 'user',   content: `Spell description: "${prompt}"` },
-        ],
-        response_format: { type: 'json_object' },
-        temperature: 0.8,
-      }),
-    })
+  const FREE_MODELS = [
+    'meta-llama/llama-3.3-70b-instruct:free',
+    'deepseek/deepseek-chat-v3-0324:free',
+    'google/gemma-3-27b-it:free',
+    'mistralai/mistral-7b-instruct:free',
+  ]
 
-    if (!res.ok) {
-      const errText = await res.text()
-      throw new Error(`OpenRouter API ${res.status}: ${errText}`)
-    }
+  const messages = [
+    { role: 'system', content: SYSTEM_PROMPT + '\n\nYou MUST respond with valid JSON only. No markdown, no explanation — just the raw JSON object.' },
+    { role: 'user',   content: `Spell description: "${prompt}"` },
+  ]
 
-    const json = await res.json()
-    const text = json.choices?.[0]?.message?.content
-    if (!text) throw new Error('Empty response from OpenRouter')
+  let lastError = null
+  for (const model of FREE_MODELS) {
+    try {
+      const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': 'https://spell.netlify.app',
+          'X-Title': 'Spell',
+        },
+        body: JSON.stringify({ model, messages, response_format: { type: 'json_object' }, temperature: 0.8 }),
+      })
 
-    const spec = JSON.parse(text)
-    return {
-      statusCode: 200,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(buildSpellDef(spec)),
+      if (res.status === 429 || res.status === 503) {
+        lastError = new Error(`${model} rate-limited (${res.status})`)
+        continue
+      }
+
+      if (!res.ok) {
+        const errText = await res.text()
+        throw new Error(`OpenRouter API ${res.status}: ${errText}`)
+      }
+
+      const json = await res.json()
+      const text = json.choices?.[0]?.message?.content
+      if (!text) throw new Error('Empty response from OpenRouter')
+
+      const spec = JSON.parse(text)
+      return {
+        statusCode: 200,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(buildSpellDef(spec)),
+      }
+    } catch (err) {
+      lastError = err
+      if (!err.message.includes('rate-limited')) break
     }
-  } catch (err) {
-    console.error('[castSpell] error:', err)
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: 'Spell generation failed', detail: err.message }),
-    }
+  }
+
+  console.error('[castSpell] all models failed:', lastError)
+  return {
+    statusCode: 500,
+    body: JSON.stringify({ error: 'Spell generation failed', detail: lastError?.message }),
   }
 }
